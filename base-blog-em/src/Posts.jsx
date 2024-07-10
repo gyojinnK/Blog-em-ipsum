@@ -13,6 +13,7 @@ export function Posts() {
   const { data, isError, error, isLoading } = useQuery({
     queryKey: ["posts"], // 쿼리 키는 항상 배열!
     queryFn: fetchPosts, // 데이터를 가져오기 위한 함수
+    staleTime: 2000, // 2s
   });
 
   if (isLoading) {
