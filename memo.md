@@ -69,3 +69,13 @@ stale과 gc의 이해를 돕기 위해서 몇가지 예시을 들어보자.
 - 사용자가 'next page' 또는 'previous page' 버튼을 클릭했을 때
   - currentPage를 업데이트
   - 쿼리 키의 변화를 react-query가 감지하고 새 쿼리를 실행
+
+# Prefetching
+
+- 미리 데이터를 캐시에 추가
+- 기본적으로 stale로 간주
+- 데이터를 사용해야 할 때, 그 데이터는 여전히 stale 상태라서 다시 데이터를 가져옴
+- 하지만 데이터를 다시 가져오는 동안, react-query는 캐시에 있는 데이터를 우선 제공
+  - 물론 캐시가 만료되지 않은 상황에서!
+
+> prefetching은 pagination뿐 아니라, 사용자가 원하는 모든 데이터에 사용할 수 있다.
