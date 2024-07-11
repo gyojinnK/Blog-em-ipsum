@@ -2,9 +2,12 @@
 
 - isFetching
   - 비동기 쿼리가 아직 해결되지 않았다는 것
+  - 비동기 쿼리 함수가 아직 해결되지 않았을 때 `true`
+    - 데이터를 아직 가져오고 있는 상태
   - 아직 fetch가 완료되지 않았지만, Axios 호출이나 GraphQL 호출 같은 다른 종류의 데이터를 가져오는 작업일 수 있다.
 - isLoading
   - 비동기 쿼리가 실행되고 쿼리가 성공하기 전의 상황
+  - isFetching이 `true`고 해당 쿼리에 대한 캐시된 데이터가 없는 상태일 때
   - 즉, 쿼리의 완료를 기다리는 상황
   - ex\_ 데이터 Fetching 로직이 동작하고 데이터를 받아오기 이전의 상황
 
@@ -79,3 +82,28 @@ stale과 gc의 이해를 돕기 위해서 몇가지 예시을 들어보자.
   - 물론 캐시가 만료되지 않은 상황에서!
 
 > prefetching은 pagination뿐 아니라, 사용자가 원하는 모든 데이터에 사용할 수 있다.
+
+# Mutation
+
+- 서버에 네트워크를 호출해 서버에서 실제 데이터를 업데이트하는 것
+  - ex\_ 블로그 포스트 추가, 삭제, 제목 변경 등
+
+## Optimistic update
+
+- 서버 호출이 성공적이라 가정하고, 잘 안됐을 경우 되돌리는 방법
+- 서버에서 받은 데이터를 가져오는 것, Mutation 호출을 실행할 때 업데이트 된 데이터를 가져와 react-query 캐시를 업데이트하는 것
+- 쿼리를 무효화 하는 방법
+  - 쿼리를 무효화하면 클라이언트의 데이터를 서버의 데이터와 동기화하기 위해 서버에 재요청이 발생
+
+## Steps
+
+- react-query Hook인 useMutation 사용
+- 이는 useQuery와 매우 유사함
+- 차이점
+  - useMutation은 mutate 함수를 반환
+    - 이 mutate 함수는 실제로 서버에 변경 사항을 호출할 때 사용
+  - useMutation은 쿼리 키가 필요 없음 -> 우리가 데이터를 저장하지 않음, 이 작업은 mutate(변이)이지, 쿼리가 아님
+  - isLoading은 있지만 isFetching은 없음
+  - 기본적으로 useMutation은 재시도를 하지 않음(useQuery는 3번의 재시도가 default)
+    - 이는 추가적인 설정을 통해 변경할 수 있음
+- [tanstack-query-mutation-docs](https://tanstack.com/query/latest/docs/framework/react/guides/mutations)

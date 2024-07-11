@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 // useQueryClient: 상위 컴포넌트에서 제공되는 QueryClient를 가져와 사용할 수 있는 hook
 
 import { fetchPosts, deletePost, updatePost } from "./api";
@@ -11,6 +11,17 @@ export function Posts() {
   const [selectedPost, setSelectedPost] = useState(null);
 
   const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    // mutationFn은 queryFn과 다르게 인자를 넘길 수 있음
+    mutationFn: (postId) => deletePost(postId),
+  });
+  // deleteMutation.mutate
+
+  const updateMutation = useMutation({
+    mutationFn: (postId) => updatePost(postId),
+  });
+  // updateMutation.mutate
 
   useEffect(() => {
     if (currentPage < maxPostPage) {
@@ -32,8 +43,8 @@ export function Posts() {
   if (isLoading) {
     // isFetching
     // 비동기 쿼리가 아직 해결되지 않았다는 것을 말한다.
-    // 아직 fetch가 완료되지 않았지만, Axios 호출이나 GraphQL 호출 같은
-    // 다른 종류의 데이터를 가져오는 작업일 수 있다.
+    // 아직 fetch가 완료되지 않았지만, Axios 호출이나 GraphQL 호출 같은 다른 종류의 데이터를 가져오는 작업일 수 있다.
+    // isFetching은 캐시된 데이터에 상관없이 쿼리 함수가 실행 중이라면 true를 반환한다.
     // isLoading은 isFetching의 하위 집합!
     return <h3>Loading...</h3>;
   }
@@ -55,7 +66,11 @@ export function Posts() {
           <li
             key={post.id}
             className="post-title"
-            onClick={() => setSelectedPost(post)}
+            onClick={() => {
+              deleteMutation.reset();
+              updateMutation.reset();
+              setSelectedPost(post);
+            }}
           >
             {post.title}
           </li>
@@ -81,7 +96,13 @@ export function Posts() {
         </button>
       </div>
       <hr />
-      {selectedPost && <PostDetail post={selectedPost} />}
+      {selectedPost && (
+        <PostDetail
+          post={selectedPost}
+          deleteMutation={deleteMutation}
+          updateMutation={updateMutation}
+        />
+      )}
     </>
   );
 }
