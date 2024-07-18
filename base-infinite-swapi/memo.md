@@ -93,3 +93,22 @@ useInfiniteQuery({
 - useInfiniteQuery에서 반환된 객체의 data 속성으로부터 데이터에 접근
   - 이는 배열인 pages 속성을 가짐
     - 따라서 이 pages 배열을 매핑해 페이지에 데이터를 표시할 수 있음
+
+# Bi-directional Scrolling
+
+- 양방향 스크롤은 데이터의 중간부터 시작할 때 유용하다.
+  - 시작점 이후뿐 아니라 이전의 데이터도 필요
+- next 메소드들 처럼 previous 메소드도 존재
+  - 이는 next의 동작과 같음
+
+# Summary
+
+- React query manages
+  - 가져오는 다음 페이지에 대한 `pageParam`
+    - 이는 getNextPageParam 옵션을 통해서 관리
+    - `lastPage` or `allPages` 매개변수를 통해 핸들링
+  - `hasNextPage`
+    - boolean 타입 (`pageParam` ? `return true` : `return false`)
+  - `fetchNextPage`
+    - 컴포넌트가 데이터를 불러와야 할 때를 결정
+    - `hasNextPage`: boolean 타입, true -> 불러올 페이지 O / false -> 불러올 페이지가 없거나 현재 마지막 페이지
