@@ -32,3 +32,15 @@ const queryClient = newQueryClient({
   }),
 });
 ```
+
+# Summary
+
+- query-client 파일을 따로 분리하기 (코드 분리)
+  - 확장성을 위해서 앱 컴포넌트가 아닌 자체 파일로 관리하는 것이 이득
+- Custom hook을 만들어 모듈화
+  - 데이터가 두 개 이상의 컴포넌트에 사용되는 경우를 대비하여 코드를 모듈식으로 유지할 수 있음 (next.js의 action파일과 유사한 개념)
+- `loading` 컴포넌트의 중앙 집중화
+  - `useIsFetching`: 현재 불러오는 퀴리 수를 반환하는 hook
+- error handling의 중앙 집중화
+  - `onError` 콜백을 사용하여 에러 발생 시 토스트 UI 제공
+    - `onError` 콜백은 새 쿼리 캐시를 생성하고 거기에 `onError` 콜백을 정의하여 queryClient 옵션에 정의
