@@ -1,4 +1,5 @@
 import { toast } from "@/components/app/toast";
+import { QueryClient } from "@tanstack/react-query";
 
 // function errorHandler(errorMsg: string) {
 //   // https://chakra-ui.com/docs/components/toast#preventing-duplicate-toast
@@ -15,3 +16,5 @@ import { toast } from "@/components/app/toast";
 //     toast({ id, title, status: "error", variant: "subtle", isClosable: true });
 //   }
 // }
+
+export const queryClient = new QueryClient();

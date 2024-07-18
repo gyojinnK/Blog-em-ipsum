@@ -20,7 +20,9 @@ module.exports = {
     "plugin:jsx-a11y/recommended",
     "plugin:vitest/recommended",
     "plugin:testing-library/react",
-    // "plugin:@tanstack/eslint-plugin-query/recommended",
+    "plugin:@tanstack/eslint-plugin-query/recommended",
+    // @tanstack/eslint-plugin-query는 쿼리 키에 쿼리 함수의 모든 dependencies가 포함되어
+    // dependencies가 변경되는 경우 쿼리가 다시 실행되도록 할 수 있음.
   ],
   ignorePatterns: ["dist", ".eslintrc.cjs"],
   parser: "@typescript-eslint/parser",
