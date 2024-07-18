@@ -6,7 +6,7 @@ import { Staff } from "./Staff";
 
 export function AllStaff() {
   // replace with data from React Query
-  const { staff, filter, setFilter } = useStaff();
+  const { data, filter, setFilter } = useStaff();
   const treatments = useTreatments();
 
   return (
@@ -15,7 +15,7 @@ export function AllStaff() {
         Our Staff
       </Heading>
       <HStack m={10} spacing={8} justify="center">
-        {staff.map((staffData) => (
+        {data.map((staffData) => (
           <Staff key={staffData.id} staffData={staffData} />
         ))}
       </HStack>

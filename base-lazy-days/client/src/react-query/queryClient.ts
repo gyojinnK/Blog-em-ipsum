@@ -1,20 +1,27 @@
 import { toast } from "@/components/app/toast";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryCache, QueryClient } from "@tanstack/react-query";
 
-// function errorHandler(errorMsg: string) {
-//   // https://chakra-ui.com/docs/components/toast#preventing-duplicate-toast
-//   // one message per page load, not one message per query
-//   // the user doesn't care that there were three failed queries on the staff page
-//   //    (staff, treatments, user)
-//   const id = "react-query-toast";
+function errorHandler(errorMsg: string) {
+  // https://chakra-ui.com/docs/components/toast#preventing-duplicate-toast
+  // one message per page load, not one message per query
+  // the user doesn't care that there were three failed queries on the staff page
+  //    (staff, treatments, user)
+  const id = "react-query-toast";
+  // error 메시지가 중복되지 않도록 id부여
 
-//   if (!toast.isActive(id)) {
-//     const action = "fetch";
-//     const title = `could not ${action} data: ${
-//       errorMsg ?? "error connecting to server"
-//     }`;
-//     toast({ id, title, status: "error", variant: "subtle", isClosable: true });
-//   }
-// }
+  if (!toast.isActive(id)) {
+    const action = "fetch";
+    const title = `could not ${action} data: ${
+      errorMsg ?? "error connecting to server"
+    }`;
+    toast({ id, title, status: "error", variant: "subtle", isClosable: true });
+  }
+}
 
-export const queryClient = new QueryClient();
+export const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error) => {
+      errorHandler(error.message);
+    },
+  }),
+});
