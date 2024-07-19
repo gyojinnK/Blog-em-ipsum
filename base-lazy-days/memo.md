@@ -100,3 +100,31 @@ select option을 이용한 filter가 유용한 이유
     - 삼중 등호 비교가 실패하게 될 것이기 때문
       > 이때, 익명 함수에서 안정적인 함수를 만들고 싶다면
       > `useCallback` 함수 사용
+
+# Re-fetching
+
+## `Refetching은 왜? 그리고 언제 사용하는가?
+
+- 일반적으로 백그라운드 prefetching을 사용하먄 오래된 데이터를 서버에서 업데이트할 수 있다.
+- 기본적으로 오래된 쿼리는 특정 조건에 따라 백그라운드에서 자동으로 리페치
+  - 쿼리의 새 인스턴스가 마운트될 때 -> 해당 키가 포함된 쿼리가 처음으로 호출될 때
+  - 리액트 컴포넌트를 마운트할 때마다 쿼리 호출
+  - 윈도우에 초점이 다시 맞춰질 때
+  - 네트워크가 다시 연결된 경우, 오래된 데이터가 업데이트되었는지 확인을 위해서.
+  - 구성된 `refetchInterval`이 경과한 경우
+    - 이는 사용자 작업이 없는 경우에도 데이터가 최신 상태로 유지되도록 서버를 주기적으로 리페치하여 데이터를 가져오려는 경우
+
+## Refetching 방법
+
+- `refetchOnMount`, `refetchOnWindowFocus`, `refetchOnReconnect`, `refetchIntaval`
+
+- 명령형으로 refetch (in `useQuery`)
+
+## Suppressing Re-fetch (리페치 억제)
+
+- stale time 늘리기
+  - 캐시 데이터가 오래된(stale) 경우에만 리페치를 트리거하기 때문
+- boolean 옵션인 `refetchOnMount`, `refetchOnWindowFocus`, `refetchOnReconnect` 중 하나 또는 모두 끄기
+
+> 리페치 억제는 자주 변경되지 않고 약간 오래되어도 사용자에게 큰 영향을 미치지 않는 데이터에 대해서만 수행해야함.
+> 네트워크 호출을 효과적으로 줄이는가? _스스로 판단하기_
