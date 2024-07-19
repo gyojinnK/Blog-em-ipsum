@@ -70,4 +70,15 @@ const queryClient = newQueryClient({
 - Home 컴포넌트에서 만들어둔 Prefetch hook을 호출하는 것이 핵심
   - 데이터가 캐시에 미리 로드되도록!
   - 캐시 시간이 끝나기 전에 사용자가 해당 데이터를 이용하는한, 캐시된 데이터를 표시할 수 있으므로, 개발자가 서버 호출을 할 때까지 사용자가 기다릴 필요가 없음!
-    2
+
+# Summary
+
+- `Pre-populating` data options
+
+  - `pre-fetch`, `setQueryData`, `placeholderData`, `initialData`
+
+- 캐시를 미리 채우기 위한, `Pre-fetch`
+  - 컴포넌트가 렌더링 되었을 떄
+  - 페이지를 업데이트할 때, 다음 페이지를 미리 채우기
+- 쿼리 키를 종속성 배열로 취급하기
+  - 쿼리가 데이터를 다시 가져오지 않거나 예상한 시점에 새 데이터를 가져오지 않는 상황을 예방
