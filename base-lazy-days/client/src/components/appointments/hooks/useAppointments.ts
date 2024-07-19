@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AppointmentDateMap } from "../types";
 import { getAvailableAppointments } from "../utils";
@@ -51,6 +51,17 @@ export function useAppointments() {
   //   appointments that the logged-in user has reserved (in white)
   const { userId } = useLoginData();
 
+  // useCallback은 해당 함수를 기억하여 계속해서 변하는 익명 콜백 함수보다 안정적으로 실행할 수 있다.
+  // 이는 훅이 실행될 때마다 함수가 변경되는 것을 방지한다.
+  // 오직 userId가 변경될 때만 해당 함수가 변경된다.
+  const selectFn = useCallback(
+    (data: AppointmentDateMap, showAll: boolean) => {
+      if (showAll) return data;
+      return getAvailableAppointments(data, userId);
+    },
+    [userId]
+  );
+
   /** ****************** END 2: filter appointments  ******************** */
   /** ****************** START 3: useQuery  ***************************** */
   // useQuery call for appointments for the current monthYear
@@ -66,6 +77,9 @@ export function useAppointments() {
         nextMonthYear.month,
       ],
       queryFn: () => getAppointments(nextMonthYear.year, nextMonthYear.month),
+      // prefetch에 select 옵션을 설정하지 않는 이유는
+      // select 옵션은 프레젠테이션 용도이며 prefetch는 모든 데이터를 캐시에 저장한 다음,
+      // useQuery를 통해 호출될 때 select 옵션을 거친다.
     });
   }, [queryClient, monthYear]);
 
@@ -79,6 +93,7 @@ export function useAppointments() {
   const { data: appointments = fallback } = useQuery({
     queryKey: [queryKeys.appointments, monthYear.year, monthYear.month],
     queryFn: () => getAppointments(monthYear.year, monthYear.month),
+    select: (data) => selectFn(data, showAll),
   });
 
   /** ****************** END 3: useQuery  ******************************* */
