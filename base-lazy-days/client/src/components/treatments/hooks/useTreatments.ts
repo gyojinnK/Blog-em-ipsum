@@ -20,11 +20,17 @@ export function useTreatments(): Treatment[] {
   const { data = fallback } = useQuery({
     queryKey: [queryKeys.treatments],
     queryFn: getTreatments,
+    // staleTime: 600000, // 10분
+    // gcTime: 900000, // 15분
+    // refetchOnMount: false,
+    // refetchOnWindowFocus: false,
+    // refetchOnReconnect: false,
+    // 이는 일반 fetch 쿼리에서만 동작함. (select 옵션과는 다르게 prefetch 쿼리에서 같은 동작을 원한다면 prefetch 쿼리에서도 해당 작업을 반복해야함)
   });
   return data;
 }
 
-export const usePrefetchTreatments = (): void  => {
+export const usePrefetchTreatments = (): void => {
   // useQueryClient는 provider로 제공받는 queryClient를 반환
   // prefetchQuery는 queryClient 메소드이기 때문에 사용함
   const queryClient = useQueryClient();
@@ -33,5 +39,9 @@ export const usePrefetchTreatments = (): void  => {
     // 쿼리가 어떤 캐시를 찾아야하는지 알려주기 위함!
     queryKey: [queryKeys.treatments],
     queryFn: getTreatments,
+    // staleTime: 600000, // 10분
+    // gcTime: 900000, // 15분
+    // prefetch는 일회성 작업
+    // 따라서 refetch 옵션은 적용할 수 없음
   });
-}
+};

@@ -128,3 +128,76 @@ select option을 이용한 filter가 유용한 이유
 
 > 리페치 억제는 자주 변경되지 않고 약간 오래되어도 사용자에게 큰 영향을 미치지 않는 데이터에 대해서만 수행해야함.
 > 네트워크 호출을 효과적으로 줄이는가? _스스로 판단하기_
+
+---
+
+# Global Re-fetching
+
+> 전역에서 리페치 옵션을 관리한다. 필요에 따라 개인화된 옵션을 추가로 설정할 수 있다.
+
+## refetching 옵션을 전역에서 관리하고 적용 방법
+
+- mutation 수행한 후 데이터를 무효화 -> 리페치 트리거
+- Global 옵션은 `src/react-query/queryClient.ts`
+
+# Polling과 Auto Refetching
+
+## refetchInterval
+
+# Summary
+
+## 필터링을 위한 select option
+
+- 리액트 쿼리 캐싱을 활용하고 데이터를 다시 필터링하지 않으려면, 삼중 등식 테스트에서 살아남을 수 있는 함수여야 한다.
+- 그래서 함수가 안정적인지 확인하기 위해 리액트 `useCallback`을 사용
+  ```js
+  const selectFn = useCallback(
+    (unfilteredStaff: Staff[]) => {
+      if (filter === "all") return unfilteredStaff;
+      return filterByTreatment(unfilteredStaff, filter);
+    },
+    [filter]
+  );
+  ```
+
+## Re-fetch 옵션과 Suppressing Re-fetch 옵션
+
+- 해당 옵션들은 전역적으로 추가한 다음, 특정 useQueries 및 prefetch 쿼리 호출에서 Overloading
+
+```js
+// 전역 queryClient에 옵션 설정
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 600000, // 10분
+      gcTime: 900000, // 15분
+      refetchOnWindowFocus: false,
+    },
+  },
+  ...
+});
+```
+
+```js
+// 특정 useQueries 및 prefetch 쿼리 호출에서 Overloading
+const commonOptions = {
+  staleTime: 0,
+  gcTime: 30000, // 5분(기본값)
+};
+...
+  const { data: appointments = fallback } = useQuery({
+    queryKey: [queryKeys.appointments, monthYear.year, monthYear.month],
+    queryFn: () => getAppointments(monthYear.year, monthYear.month),
+    select: (data) => selectFn(data, showAll),
+    refetchOnWindowFocus: true,
+    refetchInterval: 60000, // 1분
+    ...commonOptions,
+  });
+...
+```
+
+## 폴링
+
+`refetchInterval` 옵션
+
+> 서버에서 데이터가 변경되었을 경우를 대비해 일정 간격으로 데이터를 리페치

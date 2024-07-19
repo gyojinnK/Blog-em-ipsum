@@ -10,6 +10,15 @@ import { axiosInstance } from "@/axiosInstance";
 import { queryKeys } from "@/react-query/constants";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+// useQuery의 refetch 옵션은 prefetch에 적용할 수 없지만 staleTime, gcTime은 적용할 수 있다.
+// 이를 commonOptions로 따로 관리하여 prefetchQuery에 적용한다.
+// 또한 hook 내부에 작성할 시 hook을 사용할 때마다 값이 변경될 수 있기 때문에
+// useEffect에 종속성으로 추가할 수 있도록 외부에 작성하여 이들은 정적이며 변경되지 않도록 한다.
+const commonOptions = {
+  staleTime: 0,
+  gcTime: 30000, // 5분(기본값)
+};
+
 // for useQuery call
 async function getAppointments(
   year: string,
@@ -80,6 +89,7 @@ export function useAppointments() {
       // prefetch에 select 옵션을 설정하지 않는 이유는
       // select 옵션은 프레젠테이션 용도이며 prefetch는 모든 데이터를 캐시에 저장한 다음,
       // useQuery를 통해 호출될 때 select 옵션을 거친다.
+      ...commonOptions,
     });
   }, [queryClient, monthYear]);
 
@@ -94,6 +104,9 @@ export function useAppointments() {
     queryKey: [queryKeys.appointments, monthYear.year, monthYear.month],
     queryFn: () => getAppointments(monthYear.year, monthYear.month),
     select: (data) => selectFn(data, showAll),
+    refetchOnWindowFocus: true,
+    refetchInterval: 60000, // 1분
+    ...commonOptions,
   });
 
   /** ****************** END 3: useQuery  ******************************* */
