@@ -1,5 +1,5 @@
 import type { Treatment } from "@shared/types";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { axiosInstance } from "@/axiosInstance";
 import { queryKeys } from "@/react-query/constants";
@@ -22,4 +22,16 @@ export function useTreatments(): Treatment[] {
     queryFn: getTreatments,
   });
   return data;
+}
+
+export const usePrefetchTreatments = (): void  => {
+  // useQueryClient는 provider로 제공받는 queryClient를 반환
+  // prefetchQuery는 queryClient 메소드이기 때문에 사용함
+  const queryClient = useQueryClient();
+  queryClient.prefetchQuery({
+    // queryKey는 fetchQuery의 키와 동일
+    // 쿼리가 어떤 캐시를 찾아야하는지 알려주기 위함!
+    queryKey: [queryKeys.treatments],
+    queryFn: getTreatments,
+  });
 }

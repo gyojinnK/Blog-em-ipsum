@@ -44,3 +44,30 @@ const queryClient = newQueryClient({
 - error handling의 중앙 집중화
   - `onError` 콜백을 사용하여 에러 발생 시 토스트 UI 제공
     - `onError` 콜백은 새 쿼리 캐시를 생성하고 거기에 `onError` 콜백을 정의하여 queryClient 옵션에 정의
+
+---
+
+# Options for pre-populating data
+
+|        /        |     where to use     | data from | added to cache |
+| :-------------: | :------------------: | :-------: | :------------: |
+|  prefetchQuery  | `queryClient` method |  server   |       O        |
+|  setQueryData   | `queryClient` method |  client   |       O        |
+| placeholderData |  `useQuery` option   |  client   |       X        |
+|   initialData   |  `useQuery` option   |  client   |       O        |
+
+# Deep dive to Prefetching
+
+- prefetch next page
+  - 사용자가 현재 페이지를 보고 있는 동안 다음 페이지를 미리 가져옴
+  - 사용자가 다음 페이지 버튼을 클릭할 때까지 기다릴 필요가 없도록 함
+
+## PrefetchQuery
+
+- `PrefetchQuery`는 일회성
+- fetch Custom hook에서 함께 작성
+  - 같은 쿼리 함수와 쿼리 키를 사용하기 때문!
+- Home 컴포넌트에서 만들어둔 Prefetch hook을 호출하는 것이 핵심
+  - 데이터가 캐시에 미리 로드되도록!
+  - 캐시 시간이 끝나기 전에 사용자가 해당 데이터를 이용하는한, 캐시된 데이터를 표시할 수 있으므로, 개발자가 서버 호출을 할 때까지 사용자가 기다릴 필요가 없음!
+    2
