@@ -310,3 +310,180 @@ xport function useUser() {
   return { user, updateUser, clearUser };
 }
 ```
+
+# Global Mutation Handling
+
+- 전역 에러 핸들링과 로딩 중앙 집중화와 동일한 방식으로 설정
+
+```js
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 600000, // 10분
+      gcTime: 900000, // 15분
+      refetchOnWindowFocus: false,
+    },
+  },
+  queryCache: new QueryCache({
+    onError: (error) => {
+      const title = createTitle(error.message, "query");
+      errorHandler(title);
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      const title = createTitle(error.message, "mutation");
+      errorHandler(title);
+    },
+  }),
+});
+```
+
+# useMutation
+
+- `useQuery`와 유사
+- 차이점
+  - no cache data
+  - no retries
+  - no refetch
+  - no `isLoading` vs `isFetching`
+  - 반환 객체에서 mutation을 실행하는데 실제 사용하는 mutate 함수를 반환한다.
+  - `onMutate` callback
+
+## useMutation 사용
+
+```js
+export function useReserveAppointment() {
+  const { userId } = useLoginData();
+
+  const toast = useCustomToast();
+
+  const { mutate } = useMutation({
+    // mutationFn에 인자를 설정하면 mutate 함수의 인자가 된다.
+    // ex) () => mutate(appointmentData)
+    mutationFn: (appointment: Appointment) =>
+      setAppointmentUser(appointment, userId),
+    onSuccess: () => {
+      toast({ title: "You have reserved an appointment!", status: "success" });
+    },
+  });
+
+  return mutate;
+}
+```
+
+## invalidateQueries
+
+- 예약을 통해 예약 데이터를 변이할 때 해당 데이터의 캐시를 무효화할 수 있다.
+- 이를 통해 사용자가 페이지를 새로고침할 필요없이 반영된 내용을 바로 확인할 수 있다.
+- 효과
+  - 쿼리를 오래된 것으로 표현한다.
+  - 쿼리가 현재 렌더링되고 있다면 재요청을 트리거한다. (쿼리를 사용하는 컴포넌트가 렌더링되고 있다면)
+- 일반적인 순서
+  > `mutate` -> `onSuccess` -> `invalidateQueries` -> active query -> `refetch` > `invalidateQueries`로 관련 쿼리들를 무효화시키면 재요청을 유발하게되어 새로고침 없이 데이터가 업데이트 된다.
+
+## Query Filters
+
+`Query Filters`는 한 번에 여러 쿼리에 영향을 줄 수 있는 `queryClient` 메소드에 적용된다.
+
+- `removeQueries`, `invalidateQueries`, `cancelQueries`, etc...
+- 위 모든 메소드는 `query filter` 인자를 받는다.
+  - query key (부분 일치를 포함)
+    - 부분 일치는 쿼리 키의 시작 부분이어야 한다.
+  - type : `active`, `inactive` or `all`
+  - stale status, `isFetching` status
+
+## Update cache from Mutation Response
+
+- `usePatchUser` 커스텀 훅
+  - 사용자를 업데이트하는 데 사용할 메소드
+- `useUser`의 `updateUser`를 사용
+  - `queryClient` 메소드인 `setQueryData`를 사용하여 쿼리 캐시 업데이트
+
+# Optimistic Updates
+
+- 낙관적 업데이트는 서버로부터 응답을 받기도 전에 UI에 표시되는 데이터를 업데이트하는 것
+
+  - mutation이 성공할 것이라고 낙관하므로 변이가 성공한 것처럼 데이터를 보여준다.
+    - UI를 업데이트하되 캐시를 업데이트하지 않는 것
+
+- 리액트 쿼리에는 UI뿐만 아니라 실제 쿼리 캐시도 업데이트하는 옵션을 제공한다.
+  - 진행 중인 모든 쿼리를 취소해야 하므로 서버에서 오는 모든 데이터가 캐시의 업데이트를 덮어쓰지 않도록 해야 한다.
+  - 업데이트가 실패할 경우를 대비해 이전 데이터를 저장해야 하며 업데이트 이전 상태로 데이터를 롤백해야 한다.
+  - 또한, 이 롤백을 명시적으로 처리해야 한다.
+  - 롤백 데이터로 캐시를 업데이트할 호출을 직접 만드러야 한다.
+- 데이터가 많은 다른 컴포넌트에서 표시되는 경우 이 모든 작업을 수행하는 것이 가치가 있을 수 있다.
+  - ex) 예를 들어 사용자의 이메일이 네비게이션 바 사용자 프로필에 표시되고 페이지의 다른 곳에서도 표시된다면 캐시를 업데이트하기 위해서 모든 데이터를 업데이트할 수 있다.
+
+```js
+export function usePatchUser() {
+  const { user } = useUser();
+  const queryClient = useQueryClient();
+
+  const { mutate: patchUser } = useMutation({
+    mutationKey: [MUTATION_KEY],
+    mutationFn: (newData: User) => patchUserOnServer(newData, user),
+    onSuccess: () => {
+      toast({ title: "user updated!", status: "success" });
+    },
+    // onSettled = onSuccess + onError
+    // mutation이 끝나면 성공이든 오류든 상관없이 실행된다.
+    onSettled: () => {
+      // invalidateQueries가 완료되고 서버에서 새로운 데이터를 받을 때까지
+      // mutation이 진행 중인 상태를 유지하기 위해 Promise를 반환해야 함 (return 명시!)
+      return queryClient.invalidateQueries({
+        queryKey: [queryKeys.user],
+      });
+    },
+  });
+
+  return patchUser;
+}
+```
+
+## UI
+
+- 컴포넌트 내에서 `useMutationState` 훅을 사용하여 서버에 mutation을 요청하는 데이터 즉, mutation 데이터를 얻을 수 있다.
+  - mutation 데이터가 무엇인지 식별할 수 있도록 mutation key를 사용
+  - mutation이 진행 중인 동안 페이지에 mutation된 데이터를 표시하고 mutation이 해결된 후에는 쿼리를 무효화
+    - mutation 후에는 항상 쿼리를 무효화하는 것이 좋은 습관!
+  - mutation이 실패하면 서버에서 가장 최신 데이터 즉, mutation 이전의 오래된 데이터를 얻게 된다.
+
+```js
+...
+  const pendingData = useMutationState({
+    filters: { mutationKey: [MUTATION_KEY], status: "pending" },
+    select: (mutation) => {
+      return mutation.state.variables as User;
+    },
+  });
+
+  // 보류 중인 데이터
+  const pendingUser = pendingData ? pendingData[0] : null;
+  ...
+    <Stack textAlign="center">
+      <Heading>
+        Information for {pendingUser ? pendingUser.name : user?.name}
+      </Heading>
+    </Stack>
+  ...
+```
+
+# Summary
+
+## useMutation hook
+
+- 사용자의 입력에 따라 나중에 데이터를 변형
+- 사용할 수 있는 mutation 함수를 반환
+
+## mutation이 발생한 후 클라이언트를 서버와 동기화
+
+- mutation이 끝난 후 쿼리를 무효화
+- mutation 후 반환된 데이터로 캐시를 명시적으로 업데이트
+  - But, 쿼리 키가 변형 전과 후에 동일한 경우에만 캐시 업데이트가 작동함
+- 낙관적 업데이트 (optimistic update)
+  - UI
+    - mutation이 진행 중일 때 react-query가 데이터를 유지
+    - mutation이 해결된 후, 즉 오류가 발생했거나 성공했을 때 쿼리를 무효화
+      - 어떤 경우든 쿼리를 무효화하여 서버로부터 가장 최신의 데이터를 받음
+  - Cache Update
