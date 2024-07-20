@@ -201,3 +201,112 @@ const commonOptions = {
 `refetchInterval` 옵션
 
 > 서버에서 데이터가 변경되었을 경우를 대비해 일정 간격으로 데이터를 리페치
+
+---
+
+# JWT Authentication
+
+- JWT(Json Web Token)
+  - 동작 방식
+    - 사용자 이름, 비밀번호를 서버로 전송
+    - 사용자 인증 정보가 데이터베이스에서 있는 정보와 일치하는지 확인
+    - 일치한다면 서버가 Token을 반환함
+    - 클라이언트는 서버에서 반환받은 Token을 이용하여 로그인을 요구하는 서버의 자원을 요청할 때마다 요청과 함께 헤더에 토큰을 보내어 서버에서 이 클라이언트가 인증된 것임을 알 수 있게 함
+  - 보안
+    - 서버가 토큰을 생성할 때 사용자 이름이나 사용자 ID와 같은 정보를 인코딩하여 포함시킴
+    - 인증된 Token이 서버로 다시 전송될 때 이를 디코딩하여 데이터가 일치하는지 확인함
+    - 서버에 SECRET_KEY가 필요한 이유
+  - Token은 사용자 겍체에 저장
+    - 실습 내용에서는 `local-storage`에 저장하여 사용
+      > `local-storage`에 저장하면 사용자가 페이지를 새로고침해도 로그아웃되지 않음
+
+# Auth hooks
+
+인증 훅을 사용하여 리액트 쿼리와 인증 시스템에 대한 실습 진행
+
+- `useLoginData`
+
+  - `AuthContext` 값 반환
+  - 사용자 ID, 사용자 Token, clearLoginData, setLoginData
+
+- `useAuthActions`
+
+  - signin, signout, signup
+
+- `useUser`
+  - 서버에서 사용자 데이터를 반환
+  - user, updateUserData, clearUserData
+
+# Hooks using Hooks
+
+--Image--
+
+- useUser는 useLoginData를 통해 어떤 사용자가 로그인했는지 알아야 한다.
+- 그래서 서버에서 해당 사용자의 데이터를 요청할 수 있다.
+- 데이터를 요청할 때 사용자가 로그인했다는 것을 증명하기 위해 사용자 토큰이 필요하다.
+- useAuthActions는 쿼리 캐시에서 사용자 데이터를 업데이트하거나 삭제해야 한다.
+  - 로그인할 때 업데이트, 로그아웃할 때 삭제
+- 그리고 useAuthActions는 인증 컨텍스트에 로그인 데이터를 설정하거나 삭제하는 역할도 수행한다.
+
+## 왜 사용자 ID와 Token을 두 번이나 저장해야 하는가?
+
+위 이미지를 보면 사용자 ID와 Token은 인증 컨텍스트와 쿼리 캐시에 모두 저장된다.
+이는 로그인하거나 로그아웃할 때 두 곳 모두에서 업데이트해야 함을 의미한다.
+
+- _Reason_
+  1. 쿼리 캐시에 로그인한 사용자를 저장하는 것이 혼란스러움
+  - useQuery는 쿼리를 수행하기 위해 쿼리 캐시에서 사용자 ID 같은 데이터가 필요
+  - 즉, 쿼리를 수행하기 위해 쿼리에서 데이터가 필요
+    > 이는 코드를 혼란스럽고 이해하기 어렵게 만드는 순환적인 요소
+  2. 로그인한 사용자는 서버 상태가 아니라 클라이언트 상태
+  - 서버 데이터가 JWT Token과 사용자 ID를 포함하는 것은 부수적인 요소이며 사용자 이름과 주소 같은 다른 모든 사용자 데이터와는 별개
+    > 클라이언트에서 로그인한 사용자와 Token을 별도로 저장하는 것이 더 합리적
+
+# Summary
+
+## useUser
+
+- 서버로부터 사용자 프로필 데이터를 유지하는 것
+- 사용자 데이터를 캐시하고 새로 고침하는 useQuert 호출
+- 무한대 `staleTime`을 설정하여 캐시에서 데이터가 만료되지 않는 한 일반적인 새로고침 트리거가 데이터를 다시 가져오지 않도록 함
+- `setQueryData`를 사용하여 서버에서 받은 데이터를 바탕으로 로그인할 때 정보를 설정함
+- `removeQueries`를 사용하여 사용자가 로그아웃했을 때 캐시에서 해당 쿼리를 지워 사용자 정보가 남지 않게 함
+- 쿼리 함수가 서버로부터 데이터를 가져올 수 있도록 `userId`와 `userToken`이 필요했고 이는 `useLoginData`를 통해 얻었음
+- `useLoginData`는 클라이언트 state 즉, 클라이언트에 로그인한 사용자의 상태를 유지
+- 종속 쿼리를 만들기 위해서 `useQuery`의 `enabled`옵션을 사용
+
+```js
+xport function useUser() {
+  const queryClient = useQueryClient();
+
+  // get details on the userId
+  const { userId, userToken } = useLoginData();
+  // TODO: call useQuery to update user data from server
+  const { data: user } = useQuery({
+    // enabled 조건이 충족하지 않으면 해당 쿼리 함수는 실행되지 않는다.
+    // userId가 null 즉, 사용자가 로그인하거나 로그아웃할 때 useQuery는 쿼리가 활성화되었는지를 확인한다.
+    // 활성화된 상태라면 데이터를 가져오고
+    // 활성화되지 않았다면 데이터를 가져오는 것에 신경 쓰지 않는다.
+    enabled: !!userId,
+    queryKey: generateUserKey(userId, userToken),
+    queryFn: () => getUser(userId, userToken),
+    staleTime: Infinity,
+    // 이 데이터는 사용자가 스스로 업데이트할 경우에만 변경
+  });
+
+  // meant to be called from useAuth
+  function updateUser(newUser: User): void {
+    queryClient.setQueryData(
+      generateUserKey(newUser.id, newUser.token),
+      newUser
+    );
+  }
+
+  // meant to be called from useAuth
+  function clearUser() {
+    queryClient.removeQueries({ queryKey: [queryKeys.user] });
+  }
+
+  return { user, updateUser, clearUser };
+}
+```
