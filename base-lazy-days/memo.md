@@ -276,7 +276,7 @@ const commonOptions = {
 - 종속 쿼리를 만들기 위해서 `useQuery`의 `enabled`옵션을 사용
 
 ```js
-xport function useUser() {
+export function useUser() {
   const queryClient = useQueryClient();
 
   // get details on the userId
@@ -487,3 +487,138 @@ export function usePatchUser() {
     - mutation이 해결된 후, 즉 오류가 발생했거나 성공했을 때 쿼리를 무효화
       - 어떤 경우든 쿼리를 무효화하여 서버로부터 가장 최신의 데이터를 받음
   - Cache Update
+
+---
+
+# Test
+
+## Testing Mutations
+
+- mutation 테스트는 쿼리 테스트보다 다소 어려운 경향이 있다.
+
+  - Mock Service Worker를 사용하는 경우에는 더욱!
+    - 이는 MSW가 실제로 mutation을 통해 변경되는 서버를 모방하지 않기 때문!
+    - 따라서 서버에서 mutation의 결과를 테스트하려면 실제 테스트 서버가 필요 (단순히 MSW만으로는 부족)
+    - 이번 섹션에서는 mutation 실행 후 성공적인 Toast 메시지가 나타나는지 확인하는 것으로 대체
+
+- 쿼리 테스트와 마찬가지로 컴초넌트를 클라이언트 속성을 가진 제공자로 감싸야 할 것
+
+  - 테스트를 수행할 때 우리가 렌더링하고 실행하는 동작
+    - `useMutation`, `invalidateQueries`
+    - 이 둘은 모두 `provider`와 `client`를 요구함
+
+- mutation Trigger
+
+  - ex) appointment mutation을 트리거하기 위해 appointment를 클릭
+  - +) 테스트가 끝날 때 Toast를 닫는 것도 중요!
+    - Toast 상태를 깨끗하게 유지하는 데 도움이 된다.
+  - 테스트 함수 중에 Toast 사라짐이 일어나도록 해야하며 테스트 종료 후에는 일어나지 않아야 함
+    - 다른 테스트에 영향이 가지 않도록
+
+- Mocking User Login
+  - 사용자 로그인 모방
+  - 예약(appointment)를 테스트하려면 예약이 가능해야함
+    - 로그인한 사용자 필요
+  - 테스트에서 로그인한 사용자가 있다고 확신시키는 방법
+    - `useLoginData` 훅에서 반환값을 `모의`
+      1. `null`이 아닌 사용자 속성을 가진 객체를 가진 값을 반환
+      2. 컴포넌트들이 `useUser`를 호출할 때 반환 객체에 null이 아닌 사용자가 있으므로 로그인한 사용자가 있는 것처럼 행동하게 된다.
+
+# Testing Custom Hooks
+
+- `renderHook` 메소드 in '@testing-library/react'
+  - 훅을 사용하는 컴포넌트를 렌더링하느 것이 일반적으로 바람직함
+- 이 앱에서는 `useAppointments`가 유일하게 어느 정도 복잡성을 지닌 hook
+  - 이를 훅이 아닌 컴포넌트를 렌더링해서 테스트
+- 사용자 상호작용과 DOM을 관찰하는 방식의 테스트로 진행
+  - 개별 쿼리 클라이언트를 포함한 `provider` Wrapper를 생성
+
+# Summary
+
+## 사용자 상호작용을 테스트하는 것이 내부 구현보다 더 바람직환 관행
+
+> 대부분의 경우 사용자가 보는 것을 테스트하고 리액트 쿼리 자체를 특별히 테스트하지 않는 경우가 많음
+
+## Mock Service Worker
+
+> 네트워크 호출을 시뮬레이션하기 위해 MSW 사용을 추천
+
+## 컴포넌트와 Hook은 쿼리 Provider 안에 포함되어야 한다.
+
+- 테스트의 간섭을 막기위해 각 테스트에서 새로운 쿼리 클라이언트 이용
+
+```js
+export const createQueryClientWrapper = () => {
+  // 여기서도 테스트와 클라이언트 간의 상호작용을 방지하기 위함으로 새로운 쿼리 클라이언트를 생성
+  const queryClient = generateQueryClient();
+  return ({ children }: PropsWithChildren) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+// 각 테스트에 unique한 쿼리 클라이언트를 생성하는 함수
+const generateQueryClient = () => {
+  queryClientOptions.defaultOptions.queries.retry = false;
+  return new QueryClient(queryClientOptions);
+
+  // What we do?
+  // 1. 생산 환경의 쿼리 클라이언트에서 queryClientOptions 추가. 이는 Toast를 던지는 'on error' 핸들러를 가짐
+  // 2. 재시도 때문에 테스트가 시간 초과되지 않도록 retry를 'false'로 설정
+};
+
+// reference: https://testing-library.com/docs/react-testing-library/setup#custom-render
+function customRender(ui: ReactElement, client?: QueryClient) {
+  const queryClient = client ?? generateQueryClient();
+
+  return RtlRender(
+    <ChakraProvider>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>{ui}</MemoryRouter>
+      </QueryClientProvider>
+    </ChakraProvider>
+  );
+}
+```
+
+```js
+test("filter staff", async () => {
+  const { result } = renderHook(() => useStaff(), {
+    wrapper: createQueryClientWrapper(),
+  });
+  ...
+```
+
+- 쿼리 클라이언트가 프로덕션 환경의 기본 설정을 사용하게 하는 것이 바람직함
+
+```js
+export const queryClientOptions: QueryClientConfig = {
+  defaultOptions: {
+    queries: {
+      staleTime: 600000, // 10분
+      gcTime: 900000, // 15분
+      refetchOnWindowFocus: false,
+    },
+  },
+  queryCache: new QueryCache({
+    onError: (error) => {
+      const title = createTitle(error.message, "query");
+      errorHandler(title);
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      const title = createTitle(error.message, "mutation");
+      errorHandler(title);
+    },
+  }),
+};
+
+export const queryClient = new QueryClient(queryClientOptions);
+```
+
+- `error` 테스트에서는 리액트 쿼리의 기본 설정인 `3번의 재시도`를 억제하도록 설정해야함.
+
+```js
+// 테스트가 error 동작을 기다리는 동안 시간 초과되지 않도록 억제
+queryClientOptions.defaultOptions.queries.retry = false;
+```
